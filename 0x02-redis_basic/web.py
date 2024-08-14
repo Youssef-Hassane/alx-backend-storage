@@ -1,60 +1,71 @@
 #!/usr/bin/env python3
 """
-Web cache and URL access tracker using Redis.
+Caching request module
 """
-
-import requests
 import redis
+import requests
+from functools import wraps
 from typing import Callable
 
 
-class Cache:
-    """Cache class to interact with Redis."""
-
-    def __init__(self):
-        """Initialize the connection to the Redis server."""
-        self._redis = redis.Redis()
-
-    def get_page(self, url: str) -> str:
+def track_get_page(fn: Callable) -> Callable:
+    """ Decorator for get_page
+    """
+    @wraps(fn)
+    def wrapper(url: str) -> str:
+        """ Wrapper that:
+            - check whether a url's data is cached
+            - tracks how many times get_page is called
         """
-        Get the HTML content of a URL, track access count, and cache with expiration.
-
-        Args:
-            url (str): The URL to fetch.
-
-        Returns:
-            str: The HTML content of the URL.
-        """
-        cache_key = f"count:{url}"
-        self._redis.incr(cache_key)
-
-        cached_page = self._redis.get(url)
+        client = redis.Redis()
+        client.incr(f'count:{url}')
+        cached_page = client.get(f'{url}')
         if cached_page:
             return cached_page.decode('utf-8')
+        response = fn(url)
+        client.set(f'{url}', response, 10)
+        return response
+    return wrapper
 
-        response = requests.get(url)
-        page_content = response.text
 
-        self._redis.setex(url, 10, page_content)
-        return page_content
+@track_get_page
+def get_page(url: str) -> str:
+    """ Makes a http request to a given endpoint
+    """
+    response = requests.get(url)
+    return response.text#!/usr/bin/env python3
+"""
+Caching request module
+"""
+import redis
+import requests
+from functools import wraps
+from typing import Callable
 
-    def get_count(self, url: str) -> int:
+
+def track_get_page(fn: Callable) -> Callable:
+    """ Decorator for get_page
+    """
+    @wraps(fn)
+    def wrapper(url: str) -> str:
+        """ Wrapper that:
+            - check whether a url's data is cached
+            - tracks how many times get_page is called
         """
-        Get the access count of a URL.
+        client = redis.Redis()
+        client.incr(f'count:{url}')
+        cached_page = client.get(f'{url}')
+        if cached_page:
+            return cached_page.decode('utf-8')
+        response = fn(url)
+        client.set(f'{url}', response, 10)
+        return response
+    return wrapper
 
-        Args:
-            url (str): The URL to get the count for.
 
-        Returns:
-            int: The access count.
-        """
-        count = self._redis.get(f"count:{url}")
-        return int(count) if count else 0
-
-
-if __name__ == "__main__":
-    cache = Cache()
-
-    url = "http://slowwly.robertomurray.co.uk"
-    print(cache.get_page(url))
-    print(f"URL accessed {cache.get_count(url)} times")
+@track_get_page
+def get_page(url: str) -> str:
+    """ Makes a http request to a given endpoint
+    """
+    response = requests.get(url)
+    return response.text

@@ -33,14 +33,12 @@ def get_page(url: str) -> str:
     """ Makes a http request to a given endpoint
     """
     response = requests.get(url)
-    return response.text#!/usr/bin/env python3
+    return response.text  # !/usr/bin/env python3
+
+
 """
 Caching request module
 """
-import redis
-import requests
-from functools import wraps
-from typing import Callable
 
 
 def track_get_page(fn: Callable) -> Callable:
